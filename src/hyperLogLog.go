@@ -10,8 +10,6 @@ import (
 	"math"
 	"math/bits"
 	"os"
-
-	"github.com/edsrzf/mmap-go"
 )
 
 var (
@@ -37,95 +35,47 @@ func NewHyperLogLog(key [16]byte, precison uint32) *HyperLogLog {
 
 }
 
-func HLLMenu() {
-	for {
-		fmt.Println("\n1. Kreiranje novog HLL")
-		fmt.Println("2. Dodavanje elementa u HLL")
-		fmt.Println("3. Provjera elementa u HLL")
-		fmt.Println("0. Izlaz")
-		fmt.Println("Opcija:")
-		var choice int
-		n, err := fmt.Scanf("%d\n", &choice)
-		if n != 1 || err != nil {
-			continue
-		}
-
-		switch choice {
-		case 0:
-			fmt.Println("Izlaz iz HLL menija...")
-			return
-		case 1:
-			CreateHLL()
-		case 2:
-			AddToHLL()
-		case 3:
-			CheckHLL()
-		default:
-			fmt.Println("Neispravan unos. Pokusajte ponovo")
-		}
+// HLLCreate creates a new HyperLogLog stored under the given name.
+func HLLCreate(name string) {
+	hll := NewHyperLogLog(ConvertToKey(name), 16)
+	if found, _ := hll.KeyCheck(); found {
+		fmt.Println("An HLL with this name already exists.")
+		return
 	}
+
+	if err := hll.Serialize(); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("HLL created.")
 }
 
-func CreateHLL() {
-	var input string
-	fmt.Println("Unesite kljuc za novi HLL: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	hll := NewHyperLogLog(key, 16)
-	found, _ := hll.KeyCheck()
-	if found {
-		fmt.Println("Vec postoji HLL sa tim kljucem.")
-	} else {
-		// Writing into file
-		if err := hll.Serialize(); err == nil {
-			fmt.Println("Uspesno ste kreirali HLL.")
-		} else {
-			fmt.Print(err)
-		}
+// HLLAdd adds a value to an existing HyperLogLog.
+func HLLAdd(name string, value string) {
+	hll := NewHyperLogLog(ConvertToKey(name), 16)
+	found, position := hll.KeyCheck()
+	if !found {
+		fmt.Println("No HLL with this name.")
+		return
 	}
+
+	hll.Add([]byte(value), position)
+	fmt.Println("Value added to HLL.")
 }
 
-func AddToHLL() {
-	// Unos i konverzija ključa
-	var input string
-	fmt.Println("Unesite kljuc HLL-a: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	hll := NewHyperLogLog(key, 16)
-	ok, pos := hll.KeyCheck()
-	if !ok {
-		fmt.Println("Ne postoji HLL sa ovim kljucem.")
-	} else {
-		var val string
-		fmt.Println("Unesite vrednost koju zelite da ubacite u HLL: ")
-		fmt.Scanf("%s\n", &val)
-		hll.Add([]byte(val), pos)
+// HLLCount prints the estimated number of unique values in a HyperLogLog.
+func HLLCount(name string) {
+	hll := NewHyperLogLog(ConvertToKey(name), 16)
+	if found, _ := hll.KeyCheck(); !found {
+		fmt.Println("No HLL with this name.")
+		return
 	}
-}
 
-func CheckHLL() {
-	// Unos i konverzija ključa
-	var input string
-	fmt.Println("Unesite kljuc HLL-a: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	hll := NewHyperLogLog(key, 16)
-	ok, _ := hll.KeyCheck()
-	if !ok {
-		fmt.Println("Ne postoji HLL sa ovim kljucem.")
-	} else {
-		fmt.Println("Unikatnih elemenata u ovom HLL je: ", hll.CalculateEstimation())
-	}
+	fmt.Printf("Estimated number of unique values: %.0f\n", hll.CalculateEstimation())
 }
 
 func CreateHash(stream []byte) uint32 {
-	hash_value := fnv.New32()
+	hash_value := fnv.New32a()
 	hash_value.Write(stream)
 	sum := hash_value.Sum32()
 	hash_value.Reset()
@@ -176,12 +126,12 @@ func (hll *HyperLogLog) Update(offset uint64) bool {
 		return false
 	}
 
-	data, err := mmap.Map(file, mmap.RDWR, 0)
+	data, release, err := mapFile(file, true)
 	if err != nil {
 		fmt.Println(err)
 		return false
 	}
-	defer data.Unmap()
+	defer release()
 
 	offset += 16
 	hll.p = binary.BigEndian.Uint32(data[offset : offset+4])
@@ -195,7 +145,6 @@ func (hll *HyperLogLog) Update(offset uint64) bool {
 		offset += 4
 	}
 
-	data.Flush()
 	return true
 }
 
@@ -251,12 +200,12 @@ func (hll *HyperLogLog) KeyCheck() (bool, uint64) {
 		return false, 0
 	}
 
-	data, err := mmap.Map(file, mmap.RDONLY, 0)
+	data, release, err := mapFile(file, false)
 	if err != nil {
 		fmt.Println(err)
 		return false, 0
 	}
-	defer data.Unmap()
+	defer release()
 
 	var offset uint64
 	var current_key [16]byte

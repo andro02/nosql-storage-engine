@@ -39,7 +39,7 @@ func Get(memtable *Memtable, cache *LRUCache, tokens []string) (string, byte) {
 
 	value, cacheFound := cache.Get([]byte(key))
 	if cacheFound {
-		fmt.Println("Nadjen u cache-u")
+		fmt.Println("Found in cache.")
 		return string(value.Value()), value.Tombstone()
 	}
 
@@ -184,7 +184,7 @@ func SearchSingle(key string, memtable *Memtable, cache *LRUCache, path string) 
 
 	value, cacheFound := cache.Get([]byte(key))
 	if cacheFound {
-		fmt.Println("Nadjen u cache-u")
+		fmt.Println("Found in cache.")
 		return string(value.Value()), value.Tombstone()
 	}
 
