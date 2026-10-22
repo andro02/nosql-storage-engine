@@ -24,8 +24,8 @@ func NewCountMinSketch(key [16]byte, epsilon float64, delta float64) (*CountMinS
 		return nil, fmt.Errorf("countminsketch error: values of epsilon and delta should both be greater than 0")
 	}
 
-	k := CalculateRows(delta)
-	m := CalculateCols(epsilon)
+	k := CalculateCols(delta)   // number of hash functions: ceil(ln(e / delta))
+	m := CalculateRows(epsilon) // width of each row: ceil(e / epsilon)
 
 	hashFunctions, seeds := GenerateHashFunctions(k)
 	cms := &CountMinSketch{
@@ -88,7 +88,7 @@ func CreateCMS() {
 
 	key := ConvertToKey(input)
 
-	cms, _ := NewCountMinSketch(key, 0.1, 0.9)
+	cms, _ := NewCountMinSketch(key, 0.01, 0.01)
 	found, _ := cms.KeyCheck()
 	if found {
 		fmt.Println("Već postoji CMS sa tim ključem.")
@@ -299,7 +299,7 @@ func (cms *CountMinSketch) FillTableData(data []byte, offset *uint64) {
 
 	for i := 0; i < int(cms.d); i++ {
 		copy(cms.seeds[i], data[*offset:*offset+32])
-		*offset += 4
+		*offset += 32
 	}
 
 	cms.hashFunctions = InitializeHashFunctionsFromSeeds(cms.d, cms.seeds)
