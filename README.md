@@ -69,7 +69,8 @@ The engine follows the classic LSM-tree write path:
  ┃ ┣ hyperLogLog.go              — approximate cardinality estimation
  ┃ ┣ cache.go                    — LRU cache
  ┃ ┣ tokenBucket.go              — rate limiting
- ┃ ┗ put.go / get.go / delete.go — core engine operations
+ ┃ ┣ put.go / get.go / delete.go — core engine operations
+ ┃ ┗ engine.go                   — command parsing and execution
  ┣ main.go          — CLI entry point
  ┗ config.txt       — engine configuration
 ```
@@ -93,6 +94,11 @@ The engine loads its configuration from `config.txt` in the project root and sta
 >>> PUT <key> <value>
 >>> GET <key>
 >>> DELETE <key>
->>> CMS
->>> HLL
+>>> CMS CREATE <name>
+>>> CMS ADD <name> <value>
+>>> CMS QUERY <name> <value>
+>>> HLL CREATE <name>
+>>> HLL ADD <name> <value>
+>>> HLL COUNT <name>
+>>> HELP
 ```

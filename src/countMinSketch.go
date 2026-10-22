@@ -50,98 +50,46 @@ func NewCountMinSketch(key [16]byte, epsilon float64, delta float64) (*CountMinS
 // 	return cms.w
 // }
 
-func CMSMenu() {
-	for {
-		fmt.Println("\n1. Kreiranje novog CMS")
-		fmt.Println("2. Dodavanje elementa u CMS")
-		fmt.Println("3. Provjera elementa u CMS")
-		fmt.Println("0. Izlaz")
-		fmt.Println("Opcija:")
-		var choice int
-		n, err := fmt.Scanf("%d\n", &choice)
-		if n != 1 || err != nil {
-			continue
-		}
+// CMSCreate creates a new Count-Min Sketch stored under the given name.
+func CMSCreate(name string) {
+	cms, _ := NewCountMinSketch(ConvertToKey(name), 0.01, 0.01)
+	if found, _ := cms.KeyCheck(); found {
+		fmt.Println("A CMS with this name already exists.")
+		return
+	}
 
-		switch choice {
-		case 0:
-			fmt.Println("Izlaz iz CMS menija...")
-			return
-		case 1:
-			CreateCMS()
-		case 2:
-			AddToCMS()
-		case 3:
-			CheckCMS()
-		default:
-			fmt.Println("Neispravan unos. Pokusajte ponovo")
-		}
+	if err := cms.Serialize(); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("CMS created.")
+}
+
+// CMSAdd adds a value to an existing Count-Min Sketch.
+func CMSAdd(name string, value string) {
+	cms := CountMinSketch{key: ConvertToKey(name)}
+	found, position := cms.KeyCheck()
+	if !found {
+		fmt.Println("No CMS with this name.")
+		return
+	}
+
+	if cms.AddToSketch([]byte(value), position) {
+		fmt.Println("Value added to CMS.")
+	} else {
+		fmt.Println("Something went wrong. Please try again.")
 	}
 }
 
-func CreateCMS() {
-	var input string
-	fmt.Println("Unesite kljuc za CMS: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	cms, _ := NewCountMinSketch(key, 0.01, 0.01)
-	found, _ := cms.KeyCheck()
-	if found {
-		fmt.Println("Već postoji CMS sa tim ključem.")
-	} else {
-		// Upisivanje u datoteku
-		if err := cms.Serialize(); err == nil {
-			fmt.Println("Uspesno ste kreirali CMS.")
-		} else {
-			fmt.Print(err)
-		}
+// CMSQuery prints the estimated frequency of a value in a Count-Min Sketch.
+func CMSQuery(name string, value string) {
+	cms := CountMinSketch{key: ConvertToKey(name)}
+	if found, _ := cms.KeyCheck(); !found {
+		fmt.Println("No CMS with this name.")
+		return
 	}
-}
 
-func AddToCMS() {
-	// Unos i konverzija ključa
-	var input string
-	fmt.Println("Unesite kljuc CMSa: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	c := CountMinSketch{key: key}
-	ok, pos := c.KeyCheck()
-	if !ok {
-		fmt.Println("Ne postoji CMS sa ovim ključem.")
-	} else {
-		var val string
-		fmt.Println("Unesite vrednost koju zelite da ubacite u CMS: ")
-		fmt.Scanf("%s\n", &val)
-		if c.AddToSketch([]byte(val), pos) {
-			fmt.Print("Uspjesno ste dodali vrijednost u CMS.")
-		} else {
-			fmt.Println("Doslo je do greske. Pokusajte ponovo.")
-		}
-	}
-}
-
-func CheckCMS() {
-	// Unos i konverzija ključa
-	var input string
-	fmt.Println("Unesite kljuc CMSa: ")
-	fmt.Scanf("%s\n", &input)
-
-	key := ConvertToKey(input)
-
-	c := CountMinSketch{key: key}
-	ok, _ := c.KeyCheck()
-	if !ok {
-		fmt.Println("Ne postoji CMS sa ovim ključem.")
-	} else {
-		var val string
-		fmt.Println("Unesite vrednost koju zelite da proverite: ")
-		fmt.Scanln(&val)
-		fmt.Println("Pojavljuje se:", c.GetMinFrequency([]byte(val)), "puta.")
-	}
+	fmt.Printf("Estimated frequency of %q: %d\n", value, cms.GetMinFrequency([]byte(value)))
 }
 
 func ConvertToKey(input string) [16]byte {
@@ -303,7 +251,6 @@ func (cms *CountMinSketch) FillTableData(data []byte, offset *uint64) {
 }
 
 func (cms *CountMinSketch) Serialize() error {
-	fmt.Println(cms.key)
 	file, err := os.OpenFile("cms.bin", os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return err
