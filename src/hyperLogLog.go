@@ -10,8 +10,6 @@ import (
 	"math"
 	"math/bits"
 	"os"
-
-	"github.com/edsrzf/mmap-go"
 )
 
 var (
@@ -176,12 +174,12 @@ func (hll *HyperLogLog) Update(offset uint64) bool {
 		return false
 	}
 
-	data, err := mmap.Map(file, mmap.RDWR, 0)
+	data, release, err := mapFile(file, true)
 	if err != nil {
 		fmt.Println(err)
 		return false
 	}
-	defer data.Unmap()
+	defer release()
 
 	offset += 16
 	hll.p = binary.BigEndian.Uint32(data[offset : offset+4])
@@ -195,7 +193,6 @@ func (hll *HyperLogLog) Update(offset uint64) bool {
 		offset += 4
 	}
 
-	data.Flush()
 	return true
 }
 
@@ -251,12 +248,12 @@ func (hll *HyperLogLog) KeyCheck() (bool, uint64) {
 		return false, 0
 	}
 
-	data, err := mmap.Map(file, mmap.RDONLY, 0)
+	data, release, err := mapFile(file, false)
 	if err != nil {
 		fmt.Println(err)
 		return false, 0
 	}
-	defer data.Unmap()
+	defer release()
 
 	var offset uint64
 	var current_key [16]byte
