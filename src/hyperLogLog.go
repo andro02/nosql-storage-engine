@@ -125,7 +125,7 @@ func CheckHLL() {
 }
 
 func CreateHash(stream []byte) uint32 {
-	hash_value := fnv.New32()
+	hash_value := fnv.New32a()
 	hash_value.Write(stream)
 	sum := hash_value.Sum32()
 	hash_value.Reset()
