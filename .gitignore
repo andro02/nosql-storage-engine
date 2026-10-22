@@ -1,4 +1,4 @@
 .vscode/*
 logs/
 sstable/
-.vscode
+.vscode*.wasm

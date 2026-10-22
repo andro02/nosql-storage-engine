@@ -31,6 +31,7 @@ In addition to the core read/write path, the engine includes several probabilist
 - HyperLogLog for approximate cardinality estimation
 - Token bucket rate limiter to throttle incoming requests
 - PUT / GET / DELETE operations exposed through a simple CLI, with tombstone-based deletion
+- WebAssembly build that runs the engine in the browser
 - Fully configurable engine parameters (cache size, memtable threshold, WAL sizes, Bloom filter false-positive rate, B-tree/skip-list limits, rate-limiting) via `config.txt`
 
 ## Architecture
@@ -70,7 +71,9 @@ The engine follows the classic LSM-tree write path:
  ┃ ┣ cache.go                    — LRU cache
  ┃ ┣ tokenBucket.go              — rate limiting
  ┃ ┣ put.go / get.go / delete.go — core engine operations
- ┃ ┗ engine.go                   — command parsing and execution
+ ┃ ┣ engine.go                   — command parsing and execution
+ ┃ ┗ mmap_native.go / mmap_js.go — memory-mapped I/O (native) and its browser fallback
+ ┣ 📂 cmd/wasm      — WebAssembly entry point
  ┣ main.go          — CLI entry point
  ┗ config.txt       — engine configuration
 ```
@@ -101,4 +104,12 @@ The engine loads its configuration from `config.txt` in the project root and sta
 >>> HLL ADD <name> <value>
 >>> HLL COUNT <name>
 >>> HELP
+```
+
+### WebAssembly build
+
+The engine can also run in the browser. `cmd/wasm` exposes a `kvExecute(command)` function to JavaScript, and memory-mapped I/O is replaced with plain file reads in that build (see `src/mmap_js.go`). The page has to provide an in-memory, Node-style `fs` object for file operations.
+
+```
+GOOS=js GOARCH=wasm go build -ldflags="-s -w" -o kv.wasm ./cmd/wasm
 ```
